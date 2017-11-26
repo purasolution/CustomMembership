@@ -5,6 +5,10 @@ using System.Web.Security;
 using CustomMembershipEF.Interfaces;
 using CustomMembershipEF.Models;
 using CustomMembershipEF.Services;
+using CustomMembershipEF.Entities;
+using CustomMembershipEF.Contexts;
+using System.Globalization;
+using System.Web;
 
 namespace CustomMembershipEF.Controllers
 {
@@ -35,23 +39,57 @@ namespace CustomMembershipEF.Controllers
         [HttpPost]
         public ActionResult LogOn(LogOnModel model, string returnUrl)
         {
+            //if (ModelState.IsValid)
+            //{
+            //    if (MembershipService.ValidateUser(model.UserName, model.Password))
+            //    {
+            //        FormsService.SignIn(model.UserName, model.RememberMe);
+            //        if (Url.IsLocalUrl(returnUrl) && returnUrl.Length > 1 && returnUrl.StartsWith("/")
+            //            && !returnUrl.StartsWith("//") && !returnUrl.StartsWith("/\\"))
+            //        {
+            //            return Redirect(returnUrl);
+            //        }
+            //        return RedirectToAction("Index", "Home");
+            //    }
+            //    ModelState.AddModelError("", "The user name or password provided is incorrect.");
+            //}
+
+            //// If we got this far, something failed, redisplay form
+            //return View(model);
+
             if (ModelState.IsValid)
             {
                 if (MembershipService.ValidateUser(model.UserName, model.Password))
                 {
-                    FormsService.SignIn(model.UserName, model.RememberMe);
-                    if (Url.IsLocalUrl(returnUrl) && returnUrl.Length > 1 && returnUrl.StartsWith("/")
-                        && !returnUrl.StartsWith("//") && !returnUrl.StartsWith("/\\"))
-                    {
-                        return Redirect(returnUrl);
-                    }
+                    SetupFormsAuthTicket(model.UserName, model.RememberMe);
+                    
+                    // -- Snip --
                     return RedirectToAction("Index", "Home");
                 }
-                ModelState.AddModelError("", "The user name or password provided is incorrect.");
+                ModelState.AddModelError("",
+                  "The user name or password provided is incorrect.");
             }
-
-            // If we got this far, something failed, redisplay form
             return View(model);
+        }
+        private User SetupFormsAuthTicket(string userName, bool persistanceFlag)
+        {
+            User user;
+            using (var usersContext = new UsersContext())
+            {
+                user = usersContext.GetUser(userName);
+            }
+            var userId = user.UserID;
+            var userData = userId.ToString(CultureInfo.InvariantCulture);
+            var authTicket = new FormsAuthenticationTicket(1, //version
+                                userName, // user name
+                                DateTime.Now,             //creation
+                                DateTime.Now.AddMinutes(30), //Expiration
+                                persistanceFlag, //Persistent
+                                userData);
+
+            var encTicket = FormsAuthentication.Encrypt(authTicket);
+            Response.Cookies.Add(new HttpCookie(FormsAuthentication.FormsCookieName, encTicket));
+            return user;
         }
 
         //

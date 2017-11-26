@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CustomMembershipEF.Entities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -21,7 +22,14 @@ namespace CustomMembershipEF.Controllers
         }
 
         [Authorize]
-        public ActionResult Protected()
+        public ActionResult Admin()
+        {
+            var user = (UserIdentity)User.Identity;
+            return View((object)user.UserId);
+        }
+
+        [Authorize(Roles = "SuperAdmin")]
+        public ActionResult SuperAdmin()
         {
             return View();
         }
